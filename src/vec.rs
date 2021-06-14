@@ -2,7 +2,7 @@
 use super::TryClone;
 use crate::TryReserveError;
 #[allow(unused_imports)]
-use alloc::alloc::{alloc, realloc, Layout};
+use alloc::alloc::{alloc, realloc, Allocator, Global, Layout};
 use alloc::vec::Vec;
 use core::convert::TryInto as _;
 
@@ -24,7 +24,14 @@ macro_rules! try_vec {
 }
 
 /// trait implementing all fallible methods on vec
-pub trait FallibleVec<T> {
+pub trait FallibleVecGlobal<T> {
+    fn try_with_capacity(capacity: usize) -> Result<Self, TryReserveError>
+    where
+        Self: core::marker::Sized;
+}
+
+/// trait implementing all fallible methods on vec
+pub trait FallibleVec<T, A: Allocator> {
     /// see reserve
     fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError>;
     /// see push
@@ -32,7 +39,7 @@ pub trait FallibleVec<T> {
     /// try push and give back ownership in case of error
     fn try_push_give_back(&mut self, elem: T) -> Result<(), (T, TryReserveError)>;
     /// see with capacity, (Self must be sized by the constraint of Result)
-    fn try_with_capacity(capacity: usize) -> Result<Self, TryReserveError>
+    fn try_with_capacity_in(capacity: usize, alloc: A) -> Result<Self, TryReserveError>
     where
         Self: core::marker::Sized;
     /// see insert
@@ -65,8 +72,8 @@ pub trait FallibleVec<T> {
 ///
 /// See the crate documentation for more.
 #[derive(PartialEq)]
-pub struct TryVec<T> {
-    inner: Vec<T>,
+pub struct TryVec<T, A: Allocator = Global> {
+    inner: Vec<T, A>,
 }
 
 impl<T> Default for TryVec<T> {
@@ -85,16 +92,24 @@ impl<T: core::fmt::Debug> core::fmt::Debug for TryVec<T> {
     }
 }
 
-impl<T> TryVec<T> {
+impl<T> TryVec<T, Global> {
     #[inline(always)]
     pub fn new() -> Self {
         Self { inner: Vec::new() }
     }
 
-    #[inline]
     pub fn with_capacity(capacity: usize) -> Result<Self, TryReserveError> {
         Ok(Self {
-            inner: FallibleVec::try_with_capacity(capacity)?,
+            inner: FallibleVec::try_with_capacity_in(capacity, Global)?,
+        })
+    }
+}
+
+impl<T, A: Allocator> TryVec<T, A> {
+    #[inline]
+    pub fn with_capacity_in(capacity: usize, alloc: A) -> Result<Self, TryReserveError> {
+        Ok(Self {
+            inner: FallibleVec::try_with_capacity_in(capacity, alloc)?,
         })
     }
 
@@ -119,7 +134,7 @@ impl<T> TryVec<T> {
     }
 
     #[cfg(test)]
-    pub fn into_inner(self) -> Vec<T> {
+    pub fn into_inner(self) -> Vec<T, A> {
         self.inner
     }
 
@@ -380,7 +395,7 @@ impl core::convert::TryFrom<&str> for TryVec<u8> {
     }
 }
 
-impl<T> core::ops::Deref for TryVec<T> {
+impl<T, A: Allocator> core::ops::Deref for TryVec<T, A> {
     type Target = [T];
 
     #[inline(always)]
@@ -389,7 +404,7 @@ impl<T> core::ops::Deref for TryVec<T> {
     }
 }
 
-impl<T> core::ops::DerefMut for TryVec<T> {
+impl<T, A: Allocator> core::ops::DerefMut for TryVec<T, A> {
     fn deref_mut(&mut self) -> &mut [T] {
         self.inner.deref_mut()
     }
@@ -495,7 +510,18 @@ fn vec_try_extend<T>(v: &mut Vec<T>, new_cap: usize) -> Result<(), TryReserveErr
     Ok(())
 }
 
-impl<T> FallibleVec<T> for Vec<T> {
+impl<T> FallibleVecGlobal<T> for Vec<T> {
+    fn try_with_capacity(capacity: usize) -> Result<Self, TryReserveError>
+    where
+        Self: core::marker::Sized,
+    {
+        let mut n = Self::new();
+        FallibleVec::try_reserve(&mut n, capacity)?;
+        Ok(n)
+    }
+}
+
+impl<T, A: Allocator> FallibleVec<T, A> for Vec<T, A> {
     #[inline(always)]
     fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
         #[cfg(all(feature = "unstable", not(feature = "rust_1_57")))]
@@ -532,11 +558,11 @@ impl<T> FallibleVec<T> for Vec<T> {
     }
 
     #[inline]
-    fn try_with_capacity(capacity: usize) -> Result<Self, TryReserveError>
+    fn try_with_capacity_in(capacity: usize, alloc: A) -> Result<Self, TryReserveError>
     where
         Self: core::marker::Sized,
     {
-        let mut n = Self::new();
+        let mut n = Self::new_in(alloc);
         FallibleVec::try_reserve(&mut n, capacity)?;
         Ok(n)
     }
@@ -637,7 +663,7 @@ trait TryExtend<T> {
     ) -> Result<(), TryReserveError>;
 }
 
-impl<T> TryExtend<T> for Vec<T> {
+impl<T, A: Allocator> TryExtend<T> for Vec<T, A> {
     /// Extend the vector by `n` values, using the given generator.
     fn try_extend_with<E: ExtendWith<T>>(
         &mut self,
@@ -724,7 +750,7 @@ impl SpecFromElem for u8 {
     #[inline]
     fn try_from_elem(elem: u8, n: usize) -> Result<Vec<u8>, TryReserveError> {
         unsafe {
-            let mut v: Vec<u8> = FallibleVec::try_with_capacity(n)?;
+            let mut v: Vec<u8> = FallibleVecGlobal::try_with_capacity(n)?;
             core::ptr::write_bytes(v.as_mut_ptr(), elem, n);
             v.set_len(n);
             Ok(v)
