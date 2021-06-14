@@ -8,8 +8,8 @@ use alloc::sync::Arc;
 
 /// trait to implement Fallible Arc
 #[deprecated(
-	since = "0.3.1",
-	note = "⚠️️️this function is not completely fallible, it can panic !, see [issue](https://github.com/vcombey/fallible_collections/issues/13). help wanted"
+    since = "0.3.1",
+    note = "⚠️️️this function is not completely fallible, it can panic !, see [issue](https://github.com/vcombey/fallible_collections/issues/13). help wanted"
 )]
 pub trait FallibleArc<T> {
     /// try creating a new Arc, returning a Result<Box<T>,
