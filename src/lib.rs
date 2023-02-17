@@ -30,7 +30,6 @@
 #![cfg_attr(feature = "unstable", feature(core_intrinsics))]
 #![cfg_attr(all(feature = "unstable", not(feature = "rust_1_57")), feature(maybe_uninit_ref))]
 #![cfg_attr(feature = "unstable", feature(maybe_uninit_slice))]
-#![cfg_attr(feature = "unstable", feature(maybe_uninit_extra))]
 #![cfg_attr(feature = "unstable", feature(maybe_uninit_uninit_array))]
 extern crate alloc;
 #[cfg(feature = "std")]

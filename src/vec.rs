@@ -448,12 +448,12 @@ impl<'a, T> Iterator for IterMut<'a, T> {
 
 /// Grow capacity exponentially
 #[cold]
-fn vec_try_reserve_for_growth<T>(v: &mut Vec<T>, additional: usize) -> Result<(), TryReserveError> {
+fn vec_try_reserve_for_growth<T, A: Allocator>(v: &mut Vec<T, A>, additional: usize) -> Result<(), TryReserveError> {
     // saturating, because can't use CapacityOverflow here if rust_1_57 flag is enabled
     FallibleVec::try_reserve(v, additional.max(v.capacity().saturating_mul(2) - v.len()))
 }
 
-fn needs_to_grow<T>(v: &Vec<T>, len: usize) -> bool {
+fn needs_to_grow<T, A: Allocator>(v: &Vec<T, A>, len: usize) -> bool {
     v.len().checked_add(len).map_or(true, |needed| needed > v.capacity())
 }
 
