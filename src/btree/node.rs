@@ -999,7 +999,6 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge
         unsafe {
             slice_insert(self.node.keys_mut(), self.idx, key);
             slice_insert(self.node.vals_mut(), self.idx, val);
-
             (*self.node.as_leaf_mut()).len += 1;
 
             self.node.vals_mut().get_unchecked_mut(self.idx)
@@ -1662,7 +1661,7 @@ unsafe fn slice_insert<T>(slice: &mut [T], idx: usize, val: T) {
         slice.as_mut_ptr().add(idx + 1),
         slice.len() - idx,
     );
-    ptr::write(slice.get_unchecked_mut(idx), val);
+    ptr::write(slice.as_mut_ptr().add(idx), val);
 }
 
 unsafe fn slice_remove<T>(slice: &mut [T], idx: usize) -> T {
