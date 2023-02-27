@@ -684,10 +684,10 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
         debug_assert!(!self.is_shared_root());
 
         unsafe {
+            (*self.as_leaf_mut()).len += 1;
+
             slice_insert(self.keys_mut(), 0, key);
             slice_insert(self.vals_mut(), 0, val);
-
-            (*self.as_leaf_mut()).len += 1;
         }
     }
 }
@@ -735,6 +735,7 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
         debug_assert!(self.len() < CAPACITY);
 
         unsafe {
+            (*self.as_leaf_mut()).len += 1;
             slice_insert(self.keys_mut(), 0, key);
             slice_insert(self.vals_mut(), 0, val);
             slice_insert(
@@ -745,8 +746,6 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
                 0,
                 edge.node,
             );
-
-            (*self.as_leaf_mut()).len += 1;
 
             self.correct_all_childrens_parent_links();
         }
@@ -997,10 +996,9 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge
         debug_assert!(!self.node.is_shared_root());
 
         unsafe {
+            (*self.node.as_leaf_mut()).len += 1;
             slice_insert(self.node.keys_mut(), self.idx, key);
             slice_insert(self.node.vals_mut(), self.idx, val);
-
-            (*self.node.as_leaf_mut()).len += 1;
 
             self.node.vals_mut().get_unchecked_mut(self.idx)
         }
