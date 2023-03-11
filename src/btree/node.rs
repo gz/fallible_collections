@@ -670,8 +670,8 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
         let idx = self.len();
 
         unsafe {
-            ptr::write(self.keys_mut().get_unchecked_mut(idx), key);
-            ptr::write(self.vals_mut().get_unchecked_mut(idx), val);
+            ptr::write(self.keys_mut().as_mut_ptr().add(idx), key);
+            ptr::write(self.vals_mut().as_mut_ptr().add(idx), val);
 
             (*self.as_leaf_mut()).len += 1;
         }
@@ -703,8 +703,8 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
         let idx = self.len();
 
         unsafe {
-            ptr::write(self.keys_mut().get_unchecked_mut(idx), key);
-            ptr::write(self.vals_mut().get_unchecked_mut(idx), val);
+            ptr::write(self.keys_mut().as_mut_ptr().add(idx), key);
+            ptr::write(self.vals_mut().as_mut_ptr().add(idx), val);
             self.as_internal_mut()
                 .edges
                 .get_unchecked_mut(idx + 1)
@@ -1337,7 +1337,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
 
         unsafe {
             ptr::write(
-                left_node.keys_mut().get_unchecked_mut(left_len),
+                left_node.keys_mut().as_mut_ptr().add(left_len),
                 slice_remove(self.node.keys_mut(), self.idx),
             );
             ptr::copy_nonoverlapping(
@@ -1346,7 +1346,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
                 right_len,
             );
             ptr::write(
-                left_node.vals_mut().get_unchecked_mut(left_len),
+                left_node.vals_mut().as_mut_ptr().add(left_len),
                 slice_remove(self.node.vals_mut(), self.idx),
             );
             ptr::copy_nonoverlapping(
